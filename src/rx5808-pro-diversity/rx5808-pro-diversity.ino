@@ -38,7 +38,8 @@ SOFTWARE.
 // Feature Togglels
 //#define DEBUG
 #define USE_DIVERSITY
-
+// switch from GUI to Video Out
+#define USE_AUTO_SWITCH
 
 #define spiDataPin 10
 #define slaveSelectPin 11
@@ -58,6 +59,12 @@ SOFTWARE.
     // rssi strenth should be 2% greater than other receiver before switch.
     // this pervents flicker when rssi are close.
     #define DIVERSITY_CUTOVER 2
+#endif
+
+#ifdef USE_AUTO_SWITCH
+    #define AUTO_GUI_PIN 5
+    #define AUTO_VIDEO_OUT_PIN 8
+    #define AUTO_VIDEO_SWITCH_TIMEOUT 10000
 #endif
 
 // this two are minimum required
@@ -187,6 +194,9 @@ uint8_t man_channel = 0;
 uint8_t last_channel_index = 0;
 uint8_t force_seek=0;
 unsigned long time_of_tune = 0;        // will store last time when tuner was changed
+#ifdef USE_AUTO_SWITCH
+unsigned long time_auto_video=0;
+#endif
 uint8_t last_maker_pos=0;
 uint8_t last_active_channel=0;
 uint8_t first_channel_marker=1;
@@ -235,7 +245,6 @@ void setup()
     digitalWrite(buttonSave, INPUT_PULLUP);
     //Receiver Setup
     pinMode(receiverA_led,OUTPUT);
-    digitalWrite(buzzer, HIGH);
 #ifdef USE_DIVERSITY
     pinMode(receiverB_led,OUTPUT);
     digitalWrite(receiverA_led, LOW);
@@ -243,6 +252,12 @@ void setup()
 #ifdef DEBUG
     Serial.begin(115200);
     Serial.println(F("START:"));
+#endif
+
+#ifdef USE_AUTO_SWITCH
+    pinMode(AUTO_GUI_PIN,OUTPUT);
+    pinMode(AUTO_VIDEO_OUT_PIN,OUTPUT);
+    setVideoOut(AUTO_GUI_PIN);
 #endif
     // SPI pins for RX control
     pinMode (slaveSelectPin, OUTPUT);
@@ -314,6 +329,10 @@ void loop()
     state_last_used=state; // save save settings
     if (digitalRead(buttonMode) == LOW) // key pressed ?
     {
+#ifdef USE_AUTO_SWITCH
+        setVideoOut(AUTO_GUI_PIN);
+        time_auto_video=0;
+#endif
         beep(50); // beep & debounce
         delay(KEY_DEBOUNCE/2); // debounce
         beep(50); // beep & debounce
@@ -520,6 +539,9 @@ void loop()
                 scan_start=1;
             break;
             case STATE_MANUAL: // manual mode
+#ifdef USE_AUTO_SWITCH
+                time_auto_video=millis();
+#endif
             case STATE_SEEK: // seek mode
                 TV.select_font(font8x8);
                 TV.draw_rect(0,0,TV_X_MAX,TV_Y_MAX,  WHITE); // outer frame
@@ -750,6 +772,10 @@ void loop()
             // handling of keys
             if( digitalRead(buttonSeek) == LOW)        // channel UP
             {
+#ifdef USE_AUTO_SWITCH
+                setVideoOut(AUTO_GUI_PIN);
+                time_auto_video=millis();
+#endif
                 beep(50); // beep & debounce
                 delay(KEY_DEBOUNCE); // debounce
                 channelIndex++;
@@ -761,6 +787,10 @@ void loop()
             }
             if( digitalRead(buttonDown) == LOW) // channel DOWN
             {
+#ifdef USE_AUTO_SWITCH
+                setVideoOut(AUTO_GUI_PIN);
+                time_auto_video=millis();
+#endif
                 beep(50); // beep & debounce
                 delay(KEY_DEBOUNCE); // debounce
                 channelIndex--;
@@ -847,6 +877,10 @@ void loop()
             {
                 if ((!force_seek) && (rssi > RSSI_SEEK_TRESHOLD)) // check for found channel
                 {
+#ifdef USE_AUTO_SWITCH
+                    setVideoOut(AUTO_GUI_PIN);
+                    time_auto_video=millis();
+#endif
                     seek_found=1;
                     // beep twice as notice of lock
                     beep(100);
@@ -875,10 +909,19 @@ void loop()
                     delay(KEY_DEBOUNCE); // debounce
                     force_seek=1;
                     seek_found=0;
+#ifdef USE_AUTO_SWITCH
+                    time_auto_video=0;
+                    setVideoOut(AUTO_GUI_PIN);
+#endif
                     TV.printPGM(10, TV_Y_OFFSET,  PSTR("AUTO MODE SEEK"));
                 }
             }
         }
+#ifdef USE_AUTO_SWITCH
+        if(time_auto_video+AUTO_VIDEO_SWITCH_TIMEOUT < millis() && time_auto_video!=0 && digitalRead(AUTO_GUI_PIN) == HIGH) {
+            setVideoOut(AUTO_VIDEO_OUT_PIN);
+        }
+#endif
         TV.delay_frame(1); // clean redraw
     }
     /****************************/
@@ -1200,6 +1243,22 @@ void setReceiver(uint8_t receiver) {
 }
 #endif
 
+#ifdef USE_AUTO_SWITCH
+void setVideoOut(uint8_t video_out ) {
+    if(video_out == AUTO_GUI_PIN)
+    {
+        digitalWrite(AUTO_VIDEO_OUT_PIN, LOW);
+        //delay(2000);
+        digitalWrite(AUTO_GUI_PIN, HIGH);
+    }
+    else
+    {
+        digitalWrite(AUTO_GUI_PIN, LOW);
+        //delay(2000);
+        digitalWrite(AUTO_VIDEO_OUT_PIN, HIGH);
+    }
+}
+#endif
 // Private function: from http://arduino.cc/playground/Code/AvailableMemory
 int freeRam () {
   extern int __heap_start, *__brkval;
