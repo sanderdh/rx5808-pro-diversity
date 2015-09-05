@@ -63,7 +63,7 @@ SOFTWARE.
 
 #ifdef USE_AUTO_SWITCH
     #define AUTO_GUI_PIN 5
-    #define AUTO_VIDEO_OUT_PIN 8
+    #define AUTO_VIDEO_PIN 8
     #define AUTO_VIDEO_SWITCH_TIMEOUT 10000
 #endif
 
@@ -256,7 +256,7 @@ void setup()
 
 #ifdef USE_AUTO_SWITCH
     pinMode(AUTO_GUI_PIN,OUTPUT);
-    pinMode(AUTO_VIDEO_OUT_PIN,OUTPUT);
+    pinMode(AUTO_VIDEO_PIN,OUTPUT);
     setVideoOut(AUTO_GUI_PIN);
 #endif
     // SPI pins for RX control
@@ -919,7 +919,7 @@ void loop()
         }
 #ifdef USE_AUTO_SWITCH
         if(time_auto_video+AUTO_VIDEO_SWITCH_TIMEOUT < millis() && time_auto_video!=0 && digitalRead(AUTO_GUI_PIN) == HIGH) {
-            setVideoOut(AUTO_VIDEO_OUT_PIN);
+            setVideoOut(AUTO_VIDEO_PIN);
         }
 #endif
         TV.delay_frame(1); // clean redraw
@@ -1247,7 +1247,7 @@ void setReceiver(uint8_t receiver) {
 void setVideoOut(uint8_t video_out ) {
     if(video_out == AUTO_GUI_PIN)
     {
-        digitalWrite(AUTO_VIDEO_OUT_PIN, LOW);
+        digitalWrite(AUTO_VIDEO_PIN, LOW);
         //delay(2000);
         digitalWrite(AUTO_GUI_PIN, HIGH);
     }
@@ -1255,7 +1255,7 @@ void setVideoOut(uint8_t video_out ) {
     {
         digitalWrite(AUTO_GUI_PIN, LOW);
         //delay(2000);
-        digitalWrite(AUTO_VIDEO_OUT_PIN, HIGH);
+        digitalWrite(AUTO_VIDEO_PIN, HIGH);
     }
 }
 #endif
